@@ -1,0 +1,6 @@
+.env
+.DS_Store
+domain_cats.json
+build.log
+__pycache__/
+*.pyc
