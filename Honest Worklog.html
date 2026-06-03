@@ -1,389 +1,180 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Honest Worklog</title>
+<title>The Honest Log — Ada's Notes</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Spectral:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="wl/worklog.css" />
+
 <style>
-  :root {
-    --paper: #fbf8f1;
-    --ink: #2c2823;
-    --muted: #8c857a;
-    --line: rgba(44,40,35,.10);
-    --track: rgba(44,40,35,.07);
-    --serif: "Instrument Serif", Georgia, serif;
-    --mono: "IBM Plex Mono", ui-monospace, monospace;
-    --page: #e9e5db;
-  }
-  body.cool {
-    --paper: #ffffff;
-    --ink: #1d212b;
-    --muted: #8b919e;
-    --line: rgba(29,33,43,.10);
-    --track: rgba(29,33,43,.06);
-    --page: #eceef2;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
   body {
-    background: var(--page);
-    color: var(--ink);
-    font-family: var(--mono);
-    display: flex; align-items: center; justify-content: center;
-    padding: 32px;
+    background: #f8f4ed; color: #16161a;
+    font-family: "Spectral", Georgia, serif;
     -webkit-font-smoothing: antialiased;
   }
+  .page { max-width: 1280px; margin: 0 auto; }
+  .pad { padding-left: 80px; padding-right: 80px; }
 
-  /* ---- card ---- */
-  .wl-card {
-    width: 600px; max-width: 100%;
-    display: flex; flex-direction: column; height: 712px;
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 28px 30px 24px;
-    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 18px 40px -24px rgba(44,40,35,.45);
+  nav.bar { display: flex; align-items: center; justify-content: space-between;
+    height: 72px; border-bottom: 2px solid #16161a; }
+  .brand { font-family: "Playfair Display", serif; font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+    color: #16161a; text-decoration: none; }
+  .navlinks { display: flex; gap: 36px; font-family: "DM Mono", monospace; font-size: 11px;
+    letter-spacing: .1em; text-transform: uppercase; color: #6b6258; }
+  .navlinks a { color: inherit; text-decoration: none; }
+  .navlinks a:hover { color: #1e3a72; }
+
+  .log-hero { display: grid; grid-template-columns: 360px 1fr; gap: 0; }
+  .log-note { padding: 64px 48px 64px 80px; border-right: 1px solid #dad0c1; }
+  .crumb { font-family: "DM Mono", monospace; font-size: 11px; color: #2952a8; text-decoration: none;
+    letter-spacing: .04em; display: inline-block; margin-bottom: 28px; }
+  .crumb:hover { text-decoration: underline; }
+  .log-eyebrow { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: #a89d91; margin-bottom: 16px; }
+  .log-title { font-family: "Playfair Display", serif; font-weight: 700; font-size: 42px;
+    line-height: 1.08; letter-spacing: -.02em; margin: 0 0 22px; }
+  .log-lede { font-family: "Spectral", serif; font-style: italic; font-size: 16px; line-height: 1.75;
+    color: #6b6258; margin: 0 0 18px; max-width: 34ch; }
+  .log-meta { font-family: "DM Mono", monospace; font-size: 11.5px; line-height: 1.8; color: #a89d91; margin: 0; }
+  .log-meta b { color: #1e3a72; font-weight: 500; }
+  .log-stage { display: flex; align-items: flex-start; justify-content: center; padding: 56px 80px 64px; }
+
+  .month-nav { display: flex; gap: 8px; align-items: center; margin-top: 24px;
+    font-family: "DM Mono", monospace; font-size: 11px; color: #6b6258; }
+  .month-nav button { font: inherit; color: inherit; background: none;
+    border: 1px solid #dad0c1; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+  .month-nav button:disabled { opacity: .3; cursor: default; }
+
+  .log-foot { border-top: 2px solid #16161a; display: flex; justify-content: space-between;
+    align-items: center; height: 64px; font-family: "DM Mono", monospace; font-size: 11px;
+    letter-spacing: .06em; text-transform: uppercase; color: #a89d91; }
+  .log-foot a { color: #2952a8; text-decoration: none; }
+
+  @media (max-width: 900px) {
+    .log-hero { grid-template-columns: 1fr; }
+    .log-note { border-right: 0; border-bottom: 1px solid #dad0c1; padding: 48px 80px; }
+    .log-stage { padding: 32px 80px 56px; }
   }
-  .wl-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  .wl-fill { flex: 1 1 auto; min-height: 4px; }
-
-  /* ---- header / top bar ---- */
-  .wl-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-  .wl-kicker { flex: 1; font-size: 10.5px; letter-spacing: .22em; color: var(--muted); font-weight: 600; }
-  .wl-date { font-size: 11px; color: var(--ink); white-space: nowrap; }
-  .wl-tag {
-    font-size: 10px; color: var(--muted);
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 3px 9px; white-space: nowrap;
-  }
-
-  /* ---- view toggle ---- */
-  .wl-toggle { display: inline-flex; background: var(--track); border-radius: 999px; padding: 2px; gap: 2px; }
-  .wl-toggle button {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
-    border: 0; background: none; color: var(--muted); cursor: pointer;
-    padding: 4px 13px; border-radius: 999px; transition: background .15s, color .15s;
-  }
-  .wl-toggle button.is-on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(44,40,35,.16); }
-
-  /* ---- date row (day + month views) ---- */
-  .wl-daterow { display: flex; align-items: center; gap: 12px; }
-  .wl-datenav { flex: 1; display: flex; align-items: center; gap: 8px; }
-  .wl-arrow {
-    width: 22px; height: 22px; display: grid; place-items: center;
-    border: 1px solid var(--line); background: none; color: var(--ink);
-    border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 1;
-    transition: background .15s, opacity .15s;
-  }
-  .wl-arrow:hover:not(:disabled) { background: var(--track); }
-  .wl-arrow:disabled { opacity: .3; cursor: default; }
-
-  /* ---- verdict ---- */
-  .wl-verdict { margin: 18px 0 24px; }
-  .wl-v1 { display: block; font-family: var(--serif); font-size: 36px; line-height: 1.12; letter-spacing: .2px; white-space: nowrap; }
-  .wl-v2 { display: block; font-family: var(--serif); font-size: 23px; line-height: 1.2; letter-spacing: .2px; white-space: nowrap; color: var(--muted); margin-top: 4px; }
-  .wl-v2 em { font-style: italic; color: var(--ink); }
-  .wl-v3 { display: block; margin-top: 13px; font-size: 11.5px; color: var(--muted); line-height: 1.5; max-width: 46ch; }
-
-  /* ---- timeline ---- */
-  .wl-timeline { margin-bottom: 4px; }
-  .wl-band {
-    position: relative; height: 64px;
-    border-radius: 12px;
-    background: var(--track);
-  }
-  .wl-segs {
-    position: absolute; inset: 0; display: flex;
-    border-radius: 12px; overflow: hidden;
-  }
-  .wl-band::after { content: ""; position: absolute; inset: 0; border-radius: 12px; box-shadow: 0 0 0 1px var(--line) inset; pointer-events: none; }
-  .wl-seg {
-    height: 100%; cursor: pointer;
-    transition: opacity .3s ease, filter .15s;
-    border-radius: 3px;
-  }
-  .wl-seg.is-hover { filter: brightness(1.08); }
-  .wl-seg.is-hover::before { content: ""; position: absolute; inset: 0; box-shadow: 0 0 0 2px var(--ink) inset; border-radius: inherit; }
-
-  .wl-ticks { position: relative; height: 16px; margin-top: 7px; }
-  .wl-tick { position: absolute; transform: translateX(-50%); font-size: 9.5px; color: var(--muted); }
-  .wl-tick:first-child { transform: translateX(0); }
-  .wl-tick:last-child { transform: translateX(-100%); }
-
-  /* ---- tooltip ---- */
-  .wl-tip {
-    position: absolute; bottom: calc(100% + 12px); transform: translateX(-50%);
-    width: 244px; background: #26221d; color: #f4efe6;
-    border-radius: 11px; padding: 11px 13px 12px; z-index: 5; pointer-events: none;
-    box-shadow: 0 14px 30px -12px rgba(0,0,0,.5);
-  }
-  .wl-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #26221d; }
-  .wl-tip-head { display: flex; align-items: center; gap: 7px; font-size: 10px; color: rgba(244,239,230,.6); }
-  .wl-tip-head .wl-tip-dur { margin-left: auto; }
-  .wl-tip-title { font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.2; margin: 5px 0 4px; color: #fff; }
-  .wl-tip-note { font-size: 11px; line-height: 1.45; color: rgba(244,239,230,.78); }
-  .wl-tip-foot { margin-top: 7px; font-size: 9.5px; }
-  .wl-src { letter-spacing: .04em; }
-
-  /* ---- dots ---- */
-  .wl-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; }
-
-  /* ---- leaks ---- */
-  .wl-leak-head { display: flex; align-items: baseline; gap: 12px; font-family: var(--serif); font-size: 19px; margin: 22px 0 11px; }
-  .wl-leak-title { white-space: nowrap; flex: none; }
-  .wl-hint { font-family: var(--mono); font-size: 9.5px; color: var(--muted); letter-spacing: .04em; white-space: nowrap; flex: none; margin-left: auto; }
-  .wl-leak-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
-  .wl-leaks { display: grid; gap: 6px; }
-  .wl-leak-group { border-radius: 8px; transition: opacity .2s; }
-  .wl-leak {
-    width: 100%;
-    display: grid; grid-template-columns: 150px 1fr 56px 12px; align-items: center; gap: 12px;
-    background: none; border: 0; padding: 6px 6px; border-radius: 7px;
-    cursor: pointer; text-align: left; transition: background .15s; font-family: var(--mono);
-  }
-  .wl-leak:hover { background: var(--track); }
-  .wl-leak.is-active { background: var(--track); }
-  .wl-leak-name { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ink); }
-  .wl-bar-track { height: 12px; background: var(--track); border-radius: 6px; overflow: hidden; }
-  .wl-bar-fill { display: block; height: 100%; border-radius: 6px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
-  .wl-leak-dur { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
-  .wl-chev { font-size: 13px; color: var(--muted); justify-self: center; transition: transform .18s ease; line-height: 1; }
-  .wl-leak.is-active .wl-chev { transform: rotate(90deg); color: var(--ink); }
-
-  /* per-category activity drill-down */
-  .wl-leak-detail {
-    margin: 2px 6px 8px 12px; padding: 6px 0 4px 16px;
-    border-left: 2px solid; display: grid; gap: 1px;
-    animation: wl-expand .22s ease;
-  }
-  @keyframes wl-expand { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
-  .wl-act-cap { font-size: 9.5px; letter-spacing: .04em; color: var(--muted); text-transform: lowercase; margin-bottom: 4px; }
-  .wl-act {
-    display: grid; grid-template-columns: 52px 1fr 14px 52px; gap: 10px; align-items: baseline;
-    font-size: 11px; padding: 3px 0;
-  }
-  .wl-act + .wl-act { border-top: 1px dashed var(--line); }
-  .wl-act-time { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .wl-act-title { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wl-act-src { color: var(--muted); font-size: 10px; justify-self: center; }
-  .wl-act-dur { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
-
-  /* ---- stats ---- */
-  .wl-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; margin-top: 22px; padding-top: 15px; border-top: 1px dashed var(--line); }
-  .wl-stat { font-size: 11px; color: var(--muted); white-space: nowrap; }
-  .wl-stat b { color: var(--ink); font-weight: 600; }
-
-  /* ---- calendar heatmap ---- */
-  .wl-month-intro { font-family: var(--serif); font-size: 23px; line-height: 1.2; color: var(--ink); margin: 16px 0 18px; max-width: none; white-space: nowrap; }
-  .wl-card.compact .wl-month-intro { font-size: 20px; margin: 12px 0 14px; white-space: normal; }
-  .wl-cal { margin-top: 2px; display: flex; flex-direction: column; gap: 5px; flex: 1 1 auto; min-height: 0; }
-  .wl-cal-head { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; flex: none; }
-  .wl-cal-week { display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: 1fr; gap: 5px; flex: 1 1 0; min-height: 0; }
-  .wl-cal-dow { font-size: 9px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; padding-left: 1px; }
-  .wl-cal-empty { pointer-events: none; }
-  .wl-cal-cell {
-    position: relative; border: 1px solid var(--line);
-    background: var(--track);
-    border-radius: 8px; cursor: pointer; padding: 7px 8px; overflow: visible;
-    display: flex; flex-direction: column; justify-content: space-between;
-    transition: transform .12s, box-shadow .12s, opacity .2s; text-align: left;
-    min-width: 0;
-  }
-  .wl-cal-figs { min-width: 0; max-width: 100%; }
-  .wl-cal-focus { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .wl-cal-cell:hover { transform: translateY(-2px); box-shadow: 0 6px 16px -8px rgba(44,40,35,.5); z-index: 4; }
-  .wl-cal-cell.is-weekend { border-style: dashed; }
-  .wl-cal-cell.is-dim { opacity: .32; }
-  .wl-cal-num { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .wl-cal-real { font-family: var(--serif); font-size: 18px; line-height: 1; color: var(--ink); white-space: nowrap; }
-  .wl-cal-figs { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
-  .wl-cal-focus { font-family: var(--mono); font-size: 9.5px; letter-spacing: .02em; color: var(--muted); white-space: nowrap; }
-  .wl-card.compact .wl-cal-focus { font-size: 9px; }
-
-  .wl-cal-tip {
-    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(4px);
-    width: 188px; background: #26221d; color: #f4efe6; border-radius: 10px; padding: 9px 11px;
-    display: flex; flex-direction: column; gap: 3px; z-index: 6; pointer-events: none;
-    opacity: 0; transition: opacity .14s, transform .14s; box-shadow: 0 14px 30px -12px rgba(0,0,0,.5);
-  }
-  .wl-cal-cell:hover .wl-cal-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .wl-cal-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #26221d; }
-  .wl-cal-tip .wl-tip-head { display: flex; gap: 7px; font-size: 10px; color: rgba(244,239,230,.6); }
-  .wl-cal-tip .wl-tip-dur { margin-left: auto; }
-  .wl-cal-tip-row { font-size: 11px; color: rgba(244,239,230,.85); display: flex; align-items: center; gap: 6px; }
-  .wl-cal-tip-row b { color: #fff; font-weight: 600; }
-  .wl-cal-tip-leak { color: rgba(244,239,230,.7); }
-
-  .wl-cal-scale { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 9.5px; color: var(--muted); }
-  .wl-cal-scale > span { white-space: nowrap; }
-  .wl-cal-grad { width: 64px; height: 8px; border-radius: 4px; border: 1px solid var(--line); }
-  .wl-cal-hint { margin-left: auto; }
-
-  /* ---- month: daily stacked bars ---- */
-  .wl-bars-legend { display: flex; flex-wrap: wrap; gap: 7px 16px; margin: 14px 0 16px; }
-  .wl-bars-leg { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--muted); }
-  .wl-bars-plot { position: relative; flex: 1 1 auto; min-height: 150px; display: flex; align-items: flex-end; gap: 11px; }
-  .wl-bars-grid { position: absolute; inset: 0; pointer-events: none; }
-  .wl-bars-line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); }
-  .wl-bars-line > span { position: absolute; right: 0; top: -6px; font-size: 8.5px; color: var(--muted); background: var(--paper); padding: 0 2px 0 5px; }
-  .wl-bars-week { flex: 1; display: flex; align-items: flex-end; gap: 4px; height: 100%; }
-  .wl-bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform .12s; }
-  .wl-bar-col:hover { transform: translateY(-2px); }
-  .wl-bar { width: 100%; min-height: 2px; border-radius: 3px 3px 1px 1px; overflow: hidden; display: flex; flex-direction: column-reverse; box-shadow: 0 1px 0 var(--line); transition: filter .15s; }
-  .wl-bar-col:hover .wl-bar { filter: brightness(1.07); }
-  .wl-bar-seg { width: 100%; }
-  .wl-bars-days { display: flex; gap: 11px; margin-top: 7px; }
-  .wl-bars-dweek { flex: 1; display: flex; gap: 4px; }
-  .wl-bars-dnum { flex: 1; text-align: center; font-size: 8.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .wl-bartip {
-    position: absolute; bottom: calc(100% + 10px); transform: translateX(-50%);
-    width: 188px; background: #26221d; color: #f4efe6; border-radius: 10px; padding: 9px 11px;
-    display: flex; flex-direction: column; gap: 3px; z-index: 6; pointer-events: none;
-    box-shadow: 0 14px 30px -12px rgba(0,0,0,.5);
-  }
-  .wl-bartip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #26221d; }
-  .wl-card.compact .wl-bars-plot { min-height: 128px; }
-  .wl-card.compact .wl-bars-legend { margin: 11px 0 13px; }
-
-  /* ---- compact density ---- */
-  .wl-card.compact { padding: 22px 24px 20px; height: 658px; }
-  .wl-card.compact .wl-v1 { font-size: 31px; }
-  .wl-card.compact .wl-v2 { font-size: 21px; }
-  .wl-card.compact .wl-verdict { margin: 14px 0 18px; }
-  .wl-card.compact .wl-band { height: 52px; }
-  .wl-card.compact .wl-leak-head { font-size: 17px; margin: 18px 0 9px; }
-  .wl-card.compact .wl-stats { margin-top: 16px; }
-  .wl-card.compact .wl-cal-cell { border-radius: 7px; padding: 5px; }
 </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
   <script src="data.js"></script>
-  <script type="text/babel" src="tweaks-panel.jsx"></script>
   <script type="text/babel" src="widget.jsx"></script>
   <script type="text/babel" src="month.jsx"></script>
 
   <script type="text/babel">
-    const { useEffect, useState } = React;
+    const { useState, useMemo, useEffect } = React;
 
-    const LABELS = ["Reading", "Coding", "Writing", "Meeting", "Slacking", "Doomscrolling"];
-    const KEYS = ["research", "coding", "writing", "meeting", "admin", "personal"];
-    const PALETTES = {
-      warm:  ["#3f9d6f", "#3b6fa0", "#2f8e8a", "#7b6cd9", "#d99a3c", "#cf5670"],
-      muted: ["#6f9079", "#6f86a0", "#5f908c", "#7a76a8", "#c2a162", "#b67e8e"],
-      bold:  ["#15a05a", "#2f6fd0", "#0f9e93", "#7b3ff0", "#f0a020", "#e6406a"],
-    };
-    function catsFrom(arr) {
-      const o = {};
-      KEYS.forEach((k, i) => { o[k] = { label: LABELS[i], color: arr[i] }; });
-      return o;
-    }
+    const WL_PALETTE = ["#3f9d6f","#3b6fa0","#2f8e8a","#7b6cd9","#d99a3c","#cf5670"];
+    const WL_KEYS = ["research","coding","writing","meeting","admin","personal"];
+    const WL_LABELS = ["Reading","Coding","Writing","Meeting","Slacking","Doomscrolling"];
 
-    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-      "tone": "savage",
-      "palette": [
-        "#3f9d6f",
-        "#3b6fa0",
-        "#2f8e8a",
-        "#7b6cd9",
-        "#d99a3c",
-        "#cf5670"
-      ],
-      "theme": "warm",
-      "density": "compact",
-      "showStats": true
-    }/*EDITMODE-END*/;
-
-    function App() {
-      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-      useEffect(() => {
-        document.body.classList.toggle("cool", t.theme === "cool");
-      }, [t.theme]);
-
-      // Multi-month support: WORKLOG_MONTHS is { "YYYY-MM": monthDict }
-      const months = window.WORKLOG_MONTHS || { [window.WORKLOG_MONTH.key || "2026-05"]: window.WORKLOG_MONTH };
+    function Worklog() {
+      const months = window.WORKLOG_MONTHS || { [window.WORKLOG_MONTH.key || "current"]: window.WORKLOG_MONTH };
       const monthKeys = Object.keys(months).sort();
       const defaultKey = window.WORKLOG_DEFAULT_MONTH || monthKeys[monthKeys.length - 1];
       const [monthKey, setMonthKey] = useState(defaultKey);
       const M = months[monthKey] || window.WORKLOG_MONTH;
 
-      // default to the most recent day that actually has data
-      const lastIdx = React.useMemo(() => {
+      const cats = {};
+      WL_KEYS.forEach((k,i) => cats[k] = { label: WL_LABELS[i], color: WL_PALETTE[i] });
+
+      const lastIdx = useMemo(() => {
         for (let i = M.days.length - 1; i >= 0; i--) {
           const d = M.days[i];
           if ((d.events && d.events.length > 0) || d.logged > 0) return i;
         }
         return M.days.length - 1;
       }, [M]);
-      const [view, setView] = useState("day");
+      const [view, setView] = useState("month");
       const [dayIdx, setDayIdx] = useState(lastIdx);
       useEffect(() => { setDayIdx(lastIdx); }, [monthKey, lastIdx]);
-      const cats = catsFrom(t.palette);
       const day = M.days[dayIdx];
-
       const openDay = (i) => { setDayIdx(i); setView("day"); };
-      const monthIdx = monthKeys.indexOf(monthKey);
-      const goPrevMonth = () => monthIdx > 0 && setMonthKey(monthKeys[monthIdx - 1]);
-      const goNextMonth = () => monthIdx < monthKeys.length - 1 && setMonthKey(monthKeys[monthIdx + 1]);
 
+      const monthIdx = monthKeys.indexOf(monthKey);
       return (
-        <React.Fragment>
-          <div className={"wl-card" + (t.density === "compact" ? " compact" : "")}>
+        <div className="worklog-embed">
+          <div className="wl-card">
             <div className="wl-topbar">
-              <span className="wl-kicker">HONEST WORKLOG</span>
+              <span className="wl-kicker">Honest Worklog</span>
               <span className="wl-toggle">
                 <button className={view === "day" ? "is-on" : ""} onClick={() => setView("day")}>Day</button>
                 <button className={view === "month" ? "is-on" : ""} onClick={() => setView("month")}>Month</button>
               </span>
             </div>
-
             {view === "day" ? (
-              <DayView day={day} tone={t.tone} showStats={t.showStats} cats={cats}
+              <window.DayView day={day} tone="savage" showStats={true} cats={cats}
                 onPrev={() => setDayIdx((i) => Math.max(0, i - 1))}
                 onNext={() => setDayIdx((i) => Math.min(M.days.length - 1, i + 1))}
                 hasPrev={dayIdx > 0} hasNext={dayIdx < M.days.length - 1} />
             ) : (
-              <MonthView M={M} tone={t.tone} cats={cats} onSelectDay={openDay}
-                onPrevMonth={goPrevMonth} onNextMonth={goNextMonth}
+              <window.MonthView M={M} tone="savage" cats={cats} onSelectDay={openDay}
+                onPrevMonth={() => monthIdx > 0 && setMonthKey(monthKeys[monthIdx - 1])}
+                onNextMonth={() => monthIdx < monthKeys.length - 1 && setMonthKey(monthKeys[monthIdx + 1])}
                 hasPrevMonth={monthIdx > 0}
                 hasNextMonth={monthIdx < monthKeys.length - 1} />
             )}
           </div>
-
-          <TweaksPanel>
-            <TweakSection label="Voice" />
-            <TweakRadio label="Tone" value={t.tone}
-              options={["savage", "deadpan", "gentle"]}
-              onChange={(v) => setTweak("tone", v)} />
-
-            <TweakSection label="Look" />
-            <TweakRadio label="Paper" value={t.theme}
-              options={["warm", "cool"]}
-              onChange={(v) => setTweak("theme", v)} />
-            <TweakColor label="Palette" value={t.palette}
-              options={[PALETTES.warm, PALETTES.muted, PALETTES.bold]}
-              onChange={(v) => setTweak("palette", v)} />
-            <TweakRadio label="Density" value={t.density}
-              options={["regular", "compact"]}
-              onChange={(v) => setTweak("density", v)} />
-
-            <TweakSection label="Content" />
-            <TweakToggle label="Footer stats" value={t.showStats}
-              onChange={(v) => setTweak("showStats", v)} />
-          </TweaksPanel>
-        </React.Fragment>
+        </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    function Page() {
+      return (
+        <div className="page">
+          <nav className="bar pad">
+            <a className="brand" href="index.html">Ada's Notes</a>
+            <div className="navlinks">
+              <a href="index.html">AI Digest(今日动态)</a>
+              <a href="index.html">Big Tech Research</a>
+              <a href="index.html">Post(手作)</a>
+              <a href="index.html">Archive</a>
+            </div>
+          </nav>
+
+          <div className="log-hero">
+            <div className="log-note">
+              <a className="crumb" href="index.html">← Back to notes</a>
+              <div className="log-eyebrow">This month, honestly</div>
+              <h1 className="log-title">Where the time actually went</h1>
+              <p className="log-lede">
+                Every hour logged — the deep work, and the long tail of
+                "just one more tab." Here's the honest breakdown.
+              </p>
+              <p className="log-meta">
+                <b>Reading · Coding · Writing</b> count as real work.<br/>
+                Slacking and doomscrolling, regrettably, do not.<br/><br/>
+                Tap any day to see where it actually went.
+              </p>
+            </div>
+            <div className="log-stage">
+              <Worklog />
+            </div>
+          </div>
+
+          <div className="log-foot pad">
+            <span>Ada · adaren100.github.io · 2026</span>
+            <a href="index.html">← Back to notes</a>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<Page />);
   </script>
 </body>
 </html>

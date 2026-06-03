@@ -796,12 +796,6 @@ def _make_month_payload(year, month, days):
     }
 
 if __name__ == "__main__":
-    # Defaults to May 2026. CLI:
-    #   python3 build_data.py                   # May 2026, reuse snapshots
-    #   python3 build_data.py 2026 6            # June 2026
-    #   python3 build_data.py 2026 5 --force    # rebuild all days from scratch
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
     force = "--force" in sys.argv
-    y = int(args[0]) if len(args) > 0 else 2026
-    m = int(args[1]) if len(args) > 1 else 5
-    main(y, m, force=force)
+    _now = datetime.now(TZ)
+    main(_now.year, _now.month, force=force)

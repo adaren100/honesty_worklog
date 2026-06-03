@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ada's Notes</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Spectral:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="wl/worklog.css" />
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: #f8f4ed;
+    color: #16161a;
+    font-family: "Spectral", Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1280px; margin: 0 auto; }
+  .pad { padding-left: 80px; padding-right: 80px; }
+
+  /* ---- micro worklog band (homepage teaser: sparkline) ---- */
+  .microlog { border-bottom: 1px solid #dad0c1; background: #f3eee4; }
+  .microlog-in {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; gap: 40px;
+    padding: 26px 80px;
+  }
+  .ml-text { flex: none; width: 300px; }
+  .ml-eyebrow { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: #a89d91; margin-bottom: 9px; }
+  .ml-headline { font-family: "Playfair Display", Georgia, serif; font-weight: 700;
+    font-size: 22px; line-height: 1.22; letter-spacing: -.01em; color: #16161a; margin: 0; }
+  .ml-headline b { color: #1e3a72; }
+  .ml-spark { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ml-bars { display: flex; align-items: flex-end; gap: 3px; height: 50px; }
+  .ml-bar { flex: 1 1 0; min-width: 2px; border-radius: 2px 2px 0 0; background: rgba(22,22,26,.07);
+    display: flex; flex-direction: column-reverse; overflow: hidden; }
+  .ml-bar-seg { width: 100%; }
+  .ml-axis { display: flex; justify-content: space-between; font-family: "DM Mono", monospace;
+    font-size: 9px; color: #b8ad9f; letter-spacing: .04em; }
+  .ml-cta { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; text-align: right; }
+  .ml-stat { font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 30px;
+    line-height: 1; color: #16161a; letter-spacing: -.01em; white-space: nowrap; }
+  .ml-stat-sub { font-family: "Spectral", Georgia, serif; font-style: italic; font-size: 13px;
+    color: #6b6258; white-space: nowrap; }
+  .ml-link { font-family: "DM Mono", monospace; font-size: 11.5px; color: #2952a8;
+    text-decoration: none; letter-spacing: .03em; white-space: nowrap; margin-top: 3px;
+    border-bottom: 1px solid rgba(41,82,168,.35); padding-bottom: 2px; }
+  .ml-link:hover { border-bottom-color: #2952a8; }
+  @media (max-width: 880px) {
+    .microlog-in { flex-wrap: wrap; gap: 18px 28px; padding: 24px 80px; }
+    .ml-text { width: 100%; }
+    .ml-spark { order: 3; flex-basis: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+  <script src="data.js"></script>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const b = {
+      paper:"#f8f4ed", paperDark:"#ede8db", border:"#dad0c1",
+      ink:"#16161a", inkMid:"#6b6258", inkFaint:"#a89d91",
+      accent:"#1e3a72", accentBright:"#2952a8", accentLight:"#e8edf8",
+      display:"'Playfair Display',Georgia,serif",
+      body:"'Spectral',Georgia,serif",
+      mono:"'DM Mono',monospace",
+    };
+    const bTagColors = {
+      digest:{bg:"#e8edf8",c:"#1e3a72"},
+      research:{bg:"#e6f0de",c:"#264d18"},
+      post:{bg:"#f5e8e0",c:"#7a2510"},
+      short:{bg:"#e0f0e8",c:"#1a4a28"},
+    };
+    function BTag({tag}) {
+      const s = bTagColors[tag] || bTagColors.short;
+      return (
+        <span style={{fontFamily:b.mono,fontSize:10,fontWeight:500,letterSpacing:"0.08em",
+          padding:"2px 8px",borderRadius:3,background:s.bg,color:s.c}}>{tag}</span>
+      );
+    }
+
+    const POSTS = [
+      { month:"May", day:27, year:2026, title:"AI Digest — May 27", blurb:"Swyx · AI Engineer World's Fair submissions", tags:["digest"] },
+      { month:"May", day:27, year:2026, title:"Attention Is All You Need", source:"Google Brain", tags:["research"] },
+      { month:"May", day:26, year:2026, title:"AI Digest — May 26", blurb:"Peter Yang · Ryan Carson · shipping 10x faster", tags:["digest"] },
+      { month:"May", day:25, year:2026, title:"AI Digest — May 25", blurb:"Peter Yang · solo startup with AI agents", tags:["digest"] },
+      { month:"May", day:24, year:2026, title:"AI Digest — May 24", blurb:"Guillermo Rauch · AI coding landscape survey", tags:["digest"] },
+      { month:"May", day:23, year:2026, title:"Project Glasswing: one-month update", source:"Anthropic", tags:["research"] },
+      { month:"May", day:22, year:2026, title:"AI Digest — May 22", blurb:"Swyx · vibe-coded app → production in 103 commits", tags:["digest"] },
+      { month:"May", day:21, year:2026, title:"AI Digest — May 21", blurb:"Swyx · Exa bake-off · Agent Labs revenue", tags:["digest"] },
+      { month:"May", day:20, year:2026, title:"AI Digest — May 20", blurb:"Andrej Karpathy joins Anthropic", tags:["digest"] },
+      { month:"May", day:19, year:2026, title:"AI Digest — May 19", blurb:"Swyx · agentic Excel · workshop challenge", tags:["digest"] },
+      { month:"May", day:18, year:2026, title:"AI Digest — May 18", blurb:"Swyx · AI content recycling problem", tags:["digest"] },
+      { month:"May", day:16, year:2026, title:"AI Digest — May 16", blurb:"Swyx · SAP story from AI Engineer Miami", tags:["digest"] },
+      { month:"May", day: 1, year:2026, title:"Notes on learning in public", tags:["post"] },
+      { month:"Apr", day:28, year:2026, title:"AI Digest — Apr 28", blurb:"", tags:["digest"] },
+      { month:"Apr", day:14, year:2026, title:"What makes a good technical explainer?", tags:["post"] },
+      { month:"Dec", day:31, year:2025, title:"2025 in review", tags:["post"] },
+      { month:"Nov", day:15, year:2025, title:"AI Digest — Nov 15", blurb:"Chip Huyen · Vicki Boykis", tags:["digest"] },
+    ];
+    function byYear(posts) {
+      const m = {};
+      posts.forEach(p => { if (!m[p.year]) m[p.year] = []; m[p.year].push(p); });
+      return Object.entries(m).sort((a,c) => c[0]-a[0]);
+    }
+
+    const WL_PALETTE = ["#3f9d6f","#3b6fa0","#2f8e8a","#d99a3c","#cf5670"];
+
+    function fmtDur(min) {
+      if (window.fmtDur) return window.fmtDur(min);
+      const h = Math.floor(min / 60), m = min % 60;
+      return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
+    }
+
+    function MicroWorklog() {
+      const M = window.WORKLOG_MONTH;
+      if (!M) return null;
+      const { real, logged } = M.days.reduce(
+        (a, d) => ({ real: a.real + d.real, logged: a.logged + d.logged }), { real: 0, logged: 0 });
+      const realH = Math.round(real / 60);
+      const loggedH = Math.round(logged / 60);
+      const pct = logged ? Math.round((real / logged) * 100) : 0;
+      const maxLogged = Math.max(1, ...M.days.map((d) => d.logged));
+      const green = WL_PALETTE[0];
+      return (
+        <section className="microlog">
+          <div className="microlog-in">
+            <div className="ml-text">
+              <div className="ml-eyebrow">This month, honestly</div>
+              <p className="ml-headline">
+                Only <b>{pct}%</b> of my logged hours<br/>were actually real work.
+              </p>
+            </div>
+            <div className="ml-spark">
+              <div className="ml-bars">
+                {M.days.map((d, i) => {
+                  const barH = (d.logged / maxLogged) * 100;
+                  const fill = d.logged ? (d.real / d.logged) * 100 : 0;
+                  return (
+                    <div key={i} className="ml-bar" style={{ height: barH + "%" }}
+                      title={`${d.dateShort}: ${fmtDur(d.real)} real of ${fmtDur(d.logged)}`}>
+                      <span className="ml-bar-seg" style={{ height: fill + "%", background: green }} />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="ml-axis"><span>{M.month}</span><span>green = real work · each bar = a day</span></div>
+            </div>
+            <div className="ml-cta">
+              <div className="ml-stat">{realH}h</div>
+              <div className="ml-stat-sub">real of {loggedH}h logged</div>
+              <a className="ml-link" href="Honest Worklog.html">Open the honest log →</a>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    function Home() {
+      const yg = byYear(POSTS);
+      return (
+        <div className="page" style={{background:b.paper,color:b.ink}}>
+          <nav className="pad" style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+            height:72,borderBottom:`2px solid ${b.ink}`}}>
+            <span style={{fontFamily:b.display,fontSize:22,fontWeight:700,letterSpacing:"-0.01em",whiteSpace:"nowrap"}}>
+              Ada's Notes
+            </span>
+            <div style={{display:"flex",gap:36,fontFamily:b.mono,fontSize:11,
+              letterSpacing:"0.1em",textTransform:"uppercase",color:b.inkMid}}>
+              {["AI Digest(今日动态)","Big Tech Research","Post(手作)","Archive"].map(l =>
+                <span key={l} style={{cursor:"pointer"}}>{l}</span>
+              )}
+            </div>
+          </nav>
+
+          <MicroWorklog />
+
+          <div style={{display:"grid",gridTemplateColumns:"280px 1fr"}}>
+            <div style={{borderRight:`1px solid ${b.border}`,padding:"48px 32px 48px 80px"}}>
+              <p style={{fontFamily:b.body,fontSize:14,lineHeight:1.75,color:b.inkMid,
+                fontStyle:"italic",margin:"0 0 36px"}}>
+                Notes on learning and building. Daily AI digest, posts, and experiments worth keeping.
+              </p>
+              <div style={{fontFamily:b.mono,fontSize:10,letterSpacing:"0.12em",
+                textTransform:"uppercase",color:b.inkFaint,marginBottom:16}}>
+                Index
+              </div>
+              {yg.map(([year, posts]) => (
+                <div key={year} style={{marginBottom:20}}>
+                  <div style={{fontFamily:b.display,fontSize:15,fontWeight:700,
+                    color:b.accent,marginBottom:3}}>{year}</div>
+                  <div style={{fontFamily:b.mono,fontSize:11,color:b.inkFaint}}>
+                    {posts.length} entries
+                  </div>
+                </div>
+              ))}
+
+              <div style={{marginTop:32}}>
+                <div style={{fontFamily:b.mono,fontSize:10,letterSpacing:"0.1em",
+                  textTransform:"uppercase",color:b.inkFaint,marginBottom:12}}>
+                  Activity
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(10, 14px)",gap:"3px"}}>
+                  {POSTS.map((_, i) => (
+                    <div key={i} style={{width:14,height:14,borderRadius:2,
+                      background:b.accentLight,opacity:i<5?1:0.55}} />
+                  ))}
+                  {Array.from({length:Math.max(0,50-POSTS.length)}, (_, i) => (
+                    <div key={"e"+i} style={{width:14,height:14,borderRadius:2,
+                      background:b.border,opacity:0.35}} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{padding:"48px 80px 80px 48px"}}>
+              {yg.map(([year, posts]) => (
+                <div key={year} style={{marginBottom:48}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:16,
+                    paddingBottom:14,borderBottom:`2px solid ${b.ink}`}}>
+                    <span style={{fontFamily:b.display,fontSize:20,fontWeight:700}}>{year}</span>
+                    <span style={{fontFamily:b.mono,fontSize:11,color:b.inkFaint}}>
+                      {posts.length} entries
+                    </span>
+                  </div>
+                  {posts.map((p, i) => (
+                    <div key={i} style={{display:"grid",gridTemplateColumns:"56px 1fr auto",
+                      gap:20,padding:"16px 0",borderBottom:`1px solid ${b.border}`,
+                      cursor:"pointer",alignItems:"center"}}>
+                      <div style={{fontFamily:b.mono,lineHeight:1.3}}>
+                        <div style={{fontSize:11,color:b.inkFaint,letterSpacing:"0.05em"}}>
+                          {p.month.slice(0,3).toUpperCase()}
+                        </div>
+                        <div style={{fontSize:18,fontWeight:600,color:b.ink}}>
+                          {String(p.day).padStart(2,"0")}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:b.display,fontSize:16,fontWeight:600,
+                          lineHeight:1.3,marginBottom:3}}>{p.title}</div>
+                        {p.blurb && (
+                          <div style={{fontFamily:b.body,fontSize:13,fontStyle:"italic",
+                            color:b.inkMid}}>{p.blurb}</div>
+                        )}
+                        {p.source && (
+                          <div style={{fontFamily:b.mono,fontSize:11,color:b.inkFaint,
+                            letterSpacing:"0.04em"}}>{p.source}</div>
+                        )}
+                      </div>
+                      <div style={{display:"flex",gap:6,paddingTop:2}}>
+                        {p.tags.map(t => <BTag key={t} tag={t} />)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pad" style={{borderTop:`2px solid ${b.ink}`,
+            display:"flex",justifyContent:"space-between",alignItems:"center",height:64,
+            fontFamily:b.mono,fontSize:11,letterSpacing:"0.06em",
+            textTransform:"uppercase",color:b.inkFaint}}>
+            <span>Ada · adaren100.github.io · 2026</span>
+            <span style={{color:b.accentBright,cursor:"pointer"}}>RSS Feed →</span>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<Home />);
+  </script>
+</body>
+</html>
