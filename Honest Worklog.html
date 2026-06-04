@@ -85,7 +85,17 @@
     function Worklog() {
       const months = window.WORKLOG_MONTHS || { [window.WORKLOG_MONTH.key || "current"]: window.WORKLOG_MONTH };
       const monthKeys = Object.keys(months).sort();
-      const defaultKey = window.WORKLOG_DEFAULT_MONTH || monthKeys[monthKeys.length - 1];
+
+      // Default = yesterday (today - 1). Fall back to last day with data if yesterday isn't in dataset.
+      const yest = useMemo(() => {
+        const d = new Date(); d.setDate(d.getDate() - 1);
+        return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+      }, []);
+      const yestMonthKey = `${yest.y}-${String(yest.m).padStart(2, "0")}`;
+      const yestDayKey = `${yest.y}-${yest.m}-${yest.d}`;
+
+      const defaultKey = window.WORKLOG_DEFAULT_MONTH
+        || (months[yestMonthKey] ? yestMonthKey : monthKeys[monthKeys.length - 1]);
       const [monthKey, setMonthKey] = useState(defaultKey);
       const M = months[monthKey] || window.WORKLOG_MONTH;
 
@@ -93,12 +103,16 @@
       WL_KEYS.forEach((k,i) => cats[k] = { label: WL_LABELS[i], color: WL_PALETTE[i] });
 
       const lastIdx = useMemo(() => {
+        if (monthKey === yestMonthKey) {
+          const i = M.days.findIndex((d) => d.key === yestDayKey);
+          if (i >= 0) return i;
+        }
         for (let i = M.days.length - 1; i >= 0; i--) {
           const d = M.days[i];
           if ((d.events && d.events.length > 0) || d.logged > 0) return i;
         }
         return M.days.length - 1;
-      }, [M]);
+      }, [M, monthKey, yestMonthKey, yestDayKey]);
       const [view, setView] = useState("month");
       const [dayIdx, setDayIdx] = useState(lastIdx);
       useEffect(() => { setDayIdx(lastIdx); }, [monthKey, lastIdx]);

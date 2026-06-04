@@ -91,7 +91,7 @@ function Tooltip({ e, t0, total, cats }) {
       <div className="wl-tip-head">
         <span className="wl-dot" style={{ background: cats[e.cat].color }} />
         <span className="wl-tip-time">{fmtClock(e.start)}–{fmtClock(e.end)}</span>
-        <span className="wl-tip-dur">{fmtDur(toMin(e.end) - toMin(e.start))}</span>
+        <span className="wl-tip-dur">{fmtDur(((toMin(e.end) - toMin(e.start)) + 1440) % 1440)}</span>
       </div>
       <div className="wl-tip-title">{e.src === "claude" ? "Claude session" : (e.note || "—")}</div>
       <div className="wl-tip-foot"><Src src={e.src} /></div>
@@ -106,7 +106,8 @@ function Leaks({ events, cats, total, active, setActive }) {
     // seed every main category so 0m rows still render in the breakdown
     Object.keys(cats).forEach((k) => { g[k] = { k, min: 0, items: [] }; });
     events.forEach((e) => {
-      const d = toMin(e.end) - toMin(e.start);
+      let d = toMin(e.end) - toMin(e.start);
+      if (d < 0) d += 1440; // event crossed midnight
       (g[e.cat] = g[e.cat] || { k: e.cat, min: 0, items: [] });
       g[e.cat].min += d;
       g[e.cat].items.push({ ...e, dur: d });
