@@ -371,6 +371,7 @@ BUNDLE_CAT = {
     # research / reading
     "com.apple.Preview": "research",             # PDFs
     "com.readdle.PDFExpert-Mac": "research",
+    "org.zotero.zotero": "research",             # Zotero
     # admin / comms
     "com.tinyspeck.slackmacgap": "admin",
     "com.hnc.Discord": "admin",
@@ -412,7 +413,10 @@ def read_knowledgec(start_utc, end_utc):
     COCOA = datetime(2001, 1, 1, tzinfo=timezone.utc)
     s = (start_utc - COCOA).total_seconds()
     e = (end_utc   - COCOA).total_seconds()
-    out = []
+    # Merge adjacent same-bundle spans (gap ≤ MERGE_GAP) before filtering, so
+    # fragmented focus events (e.g. Zotero page flips) aren't dropped as blips.
+    MERGE_GAP = 120  # seconds
+    raw = []
     try:
         con = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True)
         cur = con.execute(
@@ -424,14 +428,23 @@ def read_knowledgec(start_utc, end_utc):
             if bundle in SKIP_BUNDLES: continue
             cat = BUNDLE_CAT.get(bundle)
             if cat is None: continue
-            dur = ed - sd
-            if dur < 60: continue   # drop sub-minute blips
+            raw.append((bundle, cat, sd, ed))
+        con.close()
+        merged = []
+        for bundle, cat, sd, ed in raw:
+            if merged and merged[-1][0] == bundle and sd - merged[-1][3] <= MERGE_GAP:
+                merged[-1][3] = max(merged[-1][3], ed)
+                merged[-1][4] += 1
+            else:
+                merged.append([bundle, cat, sd, ed, 1])
+        out = []
+        for bundle, cat, sd, ed, hits in merged:
+            if ed - sd < 60: continue
             st  = (COCOA + timedelta(seconds=sd)).astimezone(TZ)
             en  = (COCOA + timedelta(seconds=ed)).astimezone(TZ)
             short = bundle.split(".")[-1]
             out.append({"start": st, "end": en, "cat": cat, "src": "macos",
-                        "title": short, "note": bundle, "hits": 1})
-        con.close()
+                        "title": short, "note": bundle, "hits": hits})
     finally:
         shutil.rmtree(tmp.parent, ignore_errors=True)
     return out
@@ -520,7 +533,7 @@ def logical_day(dt):
     return dt.date()
 
 # Lower number = wins overlap. More specific sources (URL, file) beat coarse ones.
-SOURCE_PRIORITY = {"chrome": 1, "vscode": 2, "claude": 3, "macos": 4, "local": 5}
+SOURCE_PRIORITY = {"macos": 1, "vscode": 2, "claude": 3, "chrome": 4, "local": 5}
 
 def dedupe_overlap(evts):
     """Resolve overlapping events into non-overlapping segments. For each slice
