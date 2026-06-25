@@ -418,7 +418,7 @@ def read_knowledgec(start_utc, end_utc):
     MERGE_GAP = 120  # seconds
     raw = []
     try:
-        con = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True)
+        con = sqlite3.connect(str(tmp))
         cur = con.execute(
             "SELECT ZVALUESTRING, ZSTARTDATE, ZENDDATE FROM ZOBJECT "
             "WHERE ZSTREAMNAME = '/app/usage' "
