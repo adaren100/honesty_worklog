@@ -32,6 +32,7 @@ def _load_dotenv():
 _load_dotenv()
 HOME = Path.home()
 CLAUDE_DIR = HOME / ".claude" / "projects"
+CLAUDE_DESKTOP_SESSIONS = HOME / "Library/Application Support/Claude/claude-code-sessions"
 CHROME_DB  = HOME / "Library/Application Support/Google/Chrome/Default/History"
 VSCODE_HIST = HOME / "Library/Application Support/Code/User/History"
 KNOWLEDGE_DB = HOME / "Library/Application Support/Knowledge/knowledgeC.db"
@@ -39,6 +40,7 @@ REPO_ROOTS = [HOME / "Documents/MQ/repo", HOME / "Documents/notes"]  # tweak if 
 OUT = Path(__file__).with_name("data.js")
 SNAPSHOTS_FILE = Path(__file__).with_name("snapshots.json")  # all stored days in one file
 LLM_CACHE = Path(__file__).with_name("domain_cats.json")  # cached LLM verdicts
+SESSION_TITLE_CACHE = Path(__file__).with_name("session_title_cats.json")  # cached LLM verdicts for Claude session titles
 VALID_CATS = {"research", "coding", "writing", "meeting", "admin", "personal"}
 
 # ── categorization ────────────────────────────────────────────────────────────
@@ -79,18 +81,44 @@ def _static_categorize(url: str):
         if kw in u: return "admin"
     return None
 
-def _load_llm_cache():
-    if LLM_CACHE.exists():
-        try: return json.loads(LLM_CACHE.read_text())
+def _load_json_cache(path):
+    if path.exists():
+        try: return json.loads(path.read_text())
         except Exception: pass
     return {}
 
-def _save_llm_cache(c):
-    LLM_CACHE.write_text(json.dumps(c, indent=2, sort_keys=True))
+def _save_json_cache(path, c):
+    path.write_text(json.dumps(c, indent=2, sort_keys=True))
 
-def llm_categorize(unknown_domains, model="claude-haiku-4-5-20251001"):
-    """Ask Claude to bucket unknown domains. Returns {domain: cat}."""
-    if not unknown_domains: return {}
+DOMAIN_RULES = (
+    "Bucket each domain into ONE of: research, coding, writing, meeting, admin, personal.\n"
+    "  research = reading academic papers, ML/AI articles, technical blog posts, news ABOUT ML/AI/science\n"
+    "  coding   = dev tools, GitHub-like, package docs, cloud consoles\n"
+    "  writing  = doc editors (Overleaf/Docs/Notion), note-taking\n"
+    "  meeting  = video conferencing tools (Zoom/Meet/Teams)\n"
+    "  admin    = email, calendar, chat (Slack/Discord), bank, university admin\n"
+    "  personal = entertainment, social media, shopping, news (non-research), random scrolling\n"
+    "Reply with ONLY valid JSON: a single object mapping each domain → one category. No prose."
+)
+
+SESSION_TITLE_RULES = (
+    "Bucket each Claude AI assistant session TITLE into ONE of: research, coding, writing, meeting, admin, personal.\n"
+    "These titles describe coding-assistant sessions (Claude Code), so default to 'coding' for "
+    "anything involving building, fixing, debugging, or maintaining software/scripts/pipelines/data "
+    "tools — even if the tool's PURPOSE is administrative (e.g. a worklog tracker, a digest emailer). "
+    "Classify by what kind of WORK was done, not by what the tool is for.\n"
+    "  research = reading/discussing papers, literature review, summarizing AI/ML news or articles\n"
+    "  coding   = building tools, fixing bugs, writing scripts/code, debugging, infra/devops work\n"
+    "  writing  = blog posts, articles, notes, drafting prose (not code)\n"
+    "  meeting  = scheduling or summarizing meetings\n"
+    "  admin    = non-coding account/calendar/email/logistics tasks\n"
+    "  personal = anything non-work\n"
+    "Reply with ONLY valid JSON: a single object mapping each title (exact string) → one category. No prose."
+)
+
+def _llm_bucket(items, rules, model="claude-haiku-4-5-20251001"):
+    """Ask Claude to bucket arbitrary text items per `rules`. Returns {item: cat}."""
+    if not items: return {}
     try:
         import anthropic
     except ImportError:
@@ -104,19 +132,9 @@ def llm_categorize(unknown_domains, model="claude-haiku-4-5-20251001"):
     client = anthropic.Anthropic()
     out = {}
     BATCH = 60
-    rules = (
-        "Bucket each domain into ONE of: research, coding, writing, meeting, admin, personal.\n"
-        "  research = reading academic papers, ML/AI articles, technical blog posts, news ABOUT ML/AI/science\n"
-        "  coding   = dev tools, GitHub-like, package docs, cloud consoles\n"
-        "  writing  = doc editors (Overleaf/Docs/Notion), note-taking\n"
-        "  meeting  = video conferencing tools (Zoom/Meet/Teams)\n"
-        "  admin    = email, calendar, chat (Slack/Discord), bank, university admin\n"
-        "  personal = entertainment, social media, shopping, news (non-research), random scrolling\n"
-        "Reply with ONLY valid JSON: a single object mapping each domain → one category. No prose."
-    )
-    for i in range(0, len(unknown_domains), BATCH):
-        batch = unknown_domains[i:i+BATCH]
-        msg = "Domains:\n" + "\n".join(batch)
+    for i in range(0, len(items), BATCH):
+        batch = items[i:i+BATCH]
+        msg = "Items:\n" + "\n".join(batch)
         try:
             resp = client.messages.create(
                 model=model, max_tokens=2048,
@@ -135,9 +153,13 @@ def llm_categorize(unknown_domains, model="claude-haiku-4-5-20251001"):
             print(f"[warn] LLM batch failed: {ex}", file=sys.stderr)
     return out
 
+def llm_categorize(unknown_domains, model="claude-haiku-4-5-20251001"):
+    """Ask Claude to bucket unknown domains. Returns {domain: cat}."""
+    return _llm_bucket(unknown_domains, DOMAIN_RULES, model=model)
+
 def build_url_categorizer(all_urls):
     """Returns a categorize(url) function that uses keywords first, then LLM cache."""
-    cache = _load_llm_cache()
+    cache = _load_json_cache(LLM_CACHE)
     # collect domains needing LLM verdict (not statically matched, not in cache)
     unknown = sorted({
         domain(u) for u in all_urls
@@ -147,11 +169,31 @@ def build_url_categorizer(all_urls):
         print(f"[info] {len(unknown)} unknown domains → asking Claude", file=sys.stderr)
         verdicts = llm_categorize(unknown)
         cache.update(verdicts)
-        if verdicts: _save_llm_cache(cache)
+        if verdicts: _save_json_cache(LLM_CACHE, cache)
     def cat_of(url):
         c = _static_categorize(url)
         if c: return c
         return cache.get(domain(url), "personal")
+    return cat_of
+
+def build_title_categorizer(all_titles):
+    """Returns a categorize(title) function for Claude session titles, backed by an LLM cache.
+    Falls back to "coding" for blank/generic-placeholder/unseen titles — "Claude session · X" is
+    the synthetic fallback used when no real session title was found (plain CLI usage or an
+    archived desktop session), and is too generic for the LLM to bucket meaningfully."""
+    cache = _load_json_cache(SESSION_TITLE_CACHE)
+    unknown = sorted({
+        t for t in all_titles
+        if t and t not in cache and not t.startswith("Claude session · ")
+    })
+    if unknown:
+        print(f"[info] {len(unknown)} unknown session titles → asking Claude", file=sys.stderr)
+        verdicts = _llm_bucket(unknown, SESSION_TITLE_RULES)
+        cache.update(verdicts)
+        if verdicts: _save_json_cache(SESSION_TITLE_CACHE, cache)
+    def cat_of(title):
+        if not title: return "coding"
+        return cache.get(title, "coding")
     return cat_of
 
 def categorize(url: str) -> str:
@@ -205,26 +247,63 @@ def read_chrome(start_utc: datetime, end_utc: datetime):
     return rows
 
 # ── Claude sessions ───────────────────────────────────────────────────────────
-def _is_scheduled(obj):
-    """A session is scheduled iff it contains a queue-operation entry — that's
-    only present for cron-fired runs. Mentioning <scheduled-task> in chat doesn't
-    count, so interactive sessions about scheduled-task files are preserved."""
-    return obj.get("type") == "queue-operation"
+def _load_desktop_session_meta():
+    """Scan Claude Desktop's Cowork session metadata (one local_*.json per session).
+    Returns {session_id: {"title": str, "scheduled": bool}}, keyed by cliSessionId —
+    which matches the .claude/projects/*.jsonl filename for the same session."""
+    out = {}
+    if not CLAUDE_DESKTOP_SESSIONS.exists(): return out
+    for jf in CLAUDE_DESKTOP_SESSIONS.glob("**/local_*.json"):
+        try:
+            d = json.loads(jf.read_text())
+        except Exception:
+            continue
+        sid = d.get("cliSessionId")
+        if not sid: continue
+        out[sid] = {"title": d.get("title") or "", "scheduled": bool(d.get("scheduledTaskId"))}
+    return out
+
+def _session_entrypoint(jf):
+    """Peek at the first 'user' message to read its entrypoint (how the session was
+    launched: claude-desktop, claude-vscode, sdk-cli, ...). Returns None if unreadable."""
+    try:
+        with jf.open() as f:
+            for line in f:
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                if obj.get("type") == "user":
+                    return obj.get("entrypoint")
+    except Exception:
+        pass
+    return None
+
+# Empirically, every "sdk-cli"-entrypoint session in this user's data is an unattended
+# background run (a HEARTBEAT.md polling loop, a scheduled digest task) — never a session
+# typed by hand. Real interactive work comes through claude-desktop or claude-vscode.
+AUTOMATED_ENTRYPOINTS = {"sdk-cli"}
 
 def read_claude(start_utc: datetime, end_utc: datetime):
-    """Returns list of (datetime_local, session_id, project_short, title).
-    Filters out sessions that were triggered by a scheduled task."""
+    """Returns list of (datetime_local, session_id, title).
+    Filters out sessions whose Claude Desktop metadata marks them as a
+    scheduledTaskId run, and sessions launched by an automated entrypoint
+    (background/unattended runs rather than hands-on-keyboard work)."""
     rows = []
     if not CLAUDE_DIR.exists():
         return rows
-    # First pass: figure out which session IDs are scheduled-task runs
-    scheduled_sids = set()
-    files = []
+    desktop_meta = _load_desktop_session_meta()
+    scheduled_sids = {sid for sid, m in desktop_meta.items() if m["scheduled"]}
+    excluded = 0
     for proj_dir in CLAUDE_DIR.iterdir():
         if not proj_dir.is_dir(): continue
         short = proj_dir.name.split("-")[-1] or proj_dir.name
         for jf in proj_dir.glob("*.jsonl"):
-            files.append((proj_dir, short, jf))
+            sid = jf.stem
+            if sid in scheduled_sids or _session_entrypoint(jf) in AUTOMATED_ENTRYPOINTS:
+                excluded += 1
+                continue
+            title = desktop_meta.get(sid, {}).get("title") or ("Claude session · " + short)
             try:
                 with jf.open() as f:
                     for line in f:
@@ -232,34 +311,17 @@ def read_claude(start_utc: datetime, end_utc: datetime):
                             obj = json.loads(line)
                         except Exception:
                             continue
-                        if _is_scheduled(obj):
-                            sid = obj.get("sessionId") or jf.stem
-                            scheduled_sids.add(sid)
+                        ts = obj.get("timestamp")
+                        if not ts: continue
+                        try:
+                            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        except Exception:
+                            continue
+                        if dt < start_utc or dt > end_utc: continue
+                        rows.append((dt.astimezone(TZ), sid, title))
             except Exception as ex:
-                print(f"[warn] scan {jf}: {ex}", file=sys.stderr)
-    print(f"[info] excluded scheduled sessions: {len(scheduled_sids)}", file=sys.stderr)
-    # Second pass: collect events from non-scheduled sessions only
-    for proj_dir, short, jf in files:
-        try:
-            with jf.open() as f:
-                for line in f:
-                    try:
-                        obj = json.loads(line)
-                    except Exception:
-                        continue
-                    ts = obj.get("timestamp")
-                    if not ts: continue
-                    try:
-                        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                    except Exception:
-                        continue
-                    if dt < start_utc or dt > end_utc: continue
-                    sid = obj.get("sessionId") or jf.stem
-                    if sid in scheduled_sids: continue
-                    if obj.get("type") == "queue-operation": continue
-                    rows.append((dt.astimezone(TZ), sid, short, "Claude session · " + short))
-        except Exception as ex:
-            print(f"[warn] skip {jf}: {ex}", file=sys.stderr)
+                print(f"[warn] skip {jf}: {ex}", file=sys.stderr)
+    print(f"[info] excluded scheduled/automated sessions: {excluded}", file=sys.stderr)
     return rows
 
 # ── VS Code edit history ──────────────────────────────────────────────────────
@@ -355,7 +417,9 @@ BUNDLE_CAT = {
     "com.jetbrains.intellij": "coding",
     "com.jetbrains.WebStorm": "coding",
     "com.openai.codex": "coding",                # Codex.app
-    "com.anthropic.claudefordesktop": "coding",  # Claude Desktop
+    # com.anthropic.claudefordesktop intentionally omitted: its time is covered by the
+    # "claude" source (read_claude), which categorizes per-session by title instead of
+    # blanket-tagging all Claude Desktop time as coding.
     "com.google.antigravity": "coding",          # Google Antigravity IDE
     "com.todesktop.240716u3u1yy41w": "coding",   # another ToDesktop IDE (likely Cursor variant)
     "com.microsoft.Excel": "admin",
@@ -533,7 +597,7 @@ def logical_day(dt):
     return dt.date()
 
 # Lower number = wins overlap. More specific sources (URL, file) beat coarse ones.
-SOURCE_PRIORITY = {"macos": 1, "vscode": 2, "claude": 3, "chrome": 4, "local": 5}
+SOURCE_PRIORITY = {"claude": 1, "macos": 2, "vscode": 3, "chrome": 4, "local": 5}
 
 def dedupe_overlap(evts):
     """Resolve overlapping events into non-overlapping segments. For each slice
@@ -690,9 +754,10 @@ def compute_events(start_local, end_local):
 
     cat_fn = build_url_categorizer([r[1] for r in chrome_rows])
     chrome_evts = chrome_to_events(chrome_rows, max_dwell_min=20, gap_min=5, cat_fn=cat_fn)
+    title_cat_fn = build_title_categorizer([r[2] for r in claude_rows])
     claude_evts = to_events(claude_rows,
-        cat_of=lambda r: "coding",
-        title_of=lambda r: r[3], src="claude")
+        cat_of=lambda r: title_cat_fn(r[2]),
+        title_of=lambda r: r[2], src="claude")
     vscode_evts = to_events(vscode_rows,
         cat_of=lambda r: r[2],
         title_of=lambda r: "VS Code · " + r[3],
